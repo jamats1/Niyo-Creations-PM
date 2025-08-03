@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { usePermissions } from '@/utils/permissions';
+import { useUser } from '@clerk/nextjs';
 import { 
   LayoutDashboard, 
   Kanban, 
@@ -73,45 +74,103 @@ const navigation = [
   },
 ];
 
-const projectCategories = [
-  {
-    name: 'Interior Design',
-    href: '/projects?category=interior-design',
-    icon: Home,
-    count: 12,
-    color: 'text-purple-600',
-    bgColor: 'bg-purple-100',
-  },
-  {
-    name: 'Construction',
-    href: '/projects?category=construction',
-    icon: Building2,
-    count: 8,
-    color: 'text-orange-600',
-    bgColor: 'bg-orange-100',
-  },
-  {
-    name: 'IT Projects',
-    href: '/projects?category=it',
-    icon: Monitor,
-    count: 15,
-    color: 'text-blue-600',
-    bgColor: 'bg-blue-100',
-  },
-  {
-    name: 'Consulting',
-    href: '/projects?category=consulting',
-    icon: Wrench,
-    count: 5,
-    color: 'text-green-600',
-    bgColor: 'bg-green-100',
-  },
-];
+interface CategoryCount {
+  IT: number;
+  CONSTRUCTION: number;
+  INTERIOR_DESIGN: number;
+  [key: string]: number;
+}
+
+interface QuickStats {
+  activeProjects: number;
+  pendingTasks: number;
+  overdueTasks: number;
+}
 
 export default function Sidebar() {
   const pathname = usePathname();
   const { canViewReports, canManageUsers, hasRole } = usePermissions();
+  const { isLoaded, isSignedIn } = useUser();
   const [collapsed, setCollapsed] = useState(false);
+  const [categoryCounts, setCategoryCounts] = useState<CategoryCount>({
+    IT: 0,
+    CONSTRUCTION: 0,
+    INTERIOR_DESIGN: 0,
+  });
+  const [quickStats, setQuickStats] = useState<QuickStats>({
+    activeProjects: 0,
+    pendingTasks: 0,
+    overdueTasks: 0,
+  });
+
+  useEffect(() => {
+    if (isLoaded && isSignedIn) {
+      fetchStats();
+    }
+  }, [isLoaded, isSignedIn]);
+
+  const fetchStats = async () => {
+    try {
+      const response = await fetch('/api/dashboard/stats');
+      if (response.ok) {
+        const data = await response.json();
+        
+        // Get project counts by type from API
+        const projectsResponse = await fetch('/api/projects');
+        if (projectsResponse.ok) {
+          const projects = await projectsResponse.json();
+          const counts: CategoryCount = {
+            IT: 0,
+            CONSTRUCTION: 0,
+            INTERIOR_DESIGN: 0,
+          };
+          projects.forEach((project: any) => {
+            if (counts[project.type] !== undefined) {
+              counts[project.type]++;
+            }
+          });
+          setCategoryCounts(counts);
+        }
+        
+        // Set quick stats
+        const pendingTasks = Math.round(data.overview.totalTasks - (data.overview.totalTasks * (data.overview.taskCompletionRate / 100)));
+        setQuickStats({
+          activeProjects: data.overview.activeProjects,
+          pendingTasks: pendingTasks,
+          overdueTasks: data.overview.overdueTasks,
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching sidebar stats:', error);
+    }
+  };
+
+  const projectCategories = [
+    {
+      name: 'Interior Design',
+      href: '/projects?category=interior-design',
+      icon: Home,
+      count: categoryCounts.INTERIOR_DESIGN,
+      color: 'text-purple-600',
+      bgColor: 'bg-purple-100',
+    },
+    {
+      name: 'Construction',
+      href: '/projects?category=construction',
+      icon: Building2,
+      count: categoryCounts.CONSTRUCTION,
+      color: 'text-orange-600',
+      bgColor: 'bg-orange-100',
+    },
+    {
+      name: 'IT Projects',
+      href: '/projects?category=it',
+      icon: Monitor,
+      count: categoryCounts.IT,
+      color: 'text-blue-600',
+      bgColor: 'bg-blue-100',
+    },
+  ];
 
   return (
     <div className={cn(
@@ -217,15 +276,15 @@ export default function Sidebar() {
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
               <span className="text-gray-600">Active Projects</span>
-              <span className="font-medium text-gray-900">24</span>
+              <span className="font-medium text-gray-900">{quickStats.activeProjects}</span>
             </div>
             <div className="flex items-center justify-between text-sm">
               <span className="text-gray-600">Pending Tasks</span>
-              <span className="font-medium text-gray-900">156</span>
+              <span className="font-medium text-gray-900">{quickStats.pendingTasks}</span>
             </div>
             <div className="flex items-center justify-between text-sm">
               <span className="text-gray-600">Overdue</span>
-              <span className="font-medium text-red-600">8</span>
+              <span className="font-medium text-red-600">{quickStats.overdueTasks}</span>
             </div>
           </div>
         </div>
