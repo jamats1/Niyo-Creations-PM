@@ -1020,6 +1020,9 @@ video {
 .top-\[50\%\] {
   top: 50%;
 }
+.right-0 {
+  right: 0px;
+}
 .-z-10 {
   z-index: -10;
 }
@@ -1204,6 +1207,9 @@ video {
 .max-h-\[calc\(90vh-140px\)\] {
   max-height: calc(90vh - 140px);
 }
+.max-h-64 {
+  max-height: 16rem;
+}
 .min-h-\[100px\] {
   min-height: 100px;
 }
@@ -1284,6 +1290,9 @@ video {
 }
 .w-full {
   width: 100%;
+}
+.w-80 {
+  width: 20rem;
 }
 .min-w-0 {
   min-width: 0px;

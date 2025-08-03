@@ -3,18 +3,22 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import { Search, User, Bell, Settings, Menu } from 'lucide-react';
-import { UserButton, useUser } from '@clerk/nextjs';
+import { UserButton, useUser, SignedIn, SignedOut } from '@clerk/nextjs';
+import { useRouter } from 'next/navigation';
 
 import { cn } from '@/utils/cn';
 
 export default function Header() {
   const [searchQuery, setSearchQuery] = useState('');
   const { user } = useUser();
+  const router = useRouter();
+  const [showNotifications, setShowNotifications] = useState(false);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle search functionality
-    console.log('Searching for:', searchQuery);
+    if (searchQuery.trim()) {
+      router.push(`/search?q=${encodeURIComponent(searchQuery)}`);
+    }
   };
 
   return (
@@ -56,36 +60,62 @@ export default function Header() {
           {/* User Actions */}
           <div className="flex items-center space-x-4">
             {/* Notifications */}
-            <button className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
-              <Bell className="h-5 w-5" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-            </button>
-
-            {/* Settings */}
-            <button className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
-              <Settings className="h-5 w-5" />
-            </button>
-
-            {/* User Profile */}
-            <div className="flex items-center space-x-3">
-              <UserButton 
-                appearance={{
-                  elements: {
-                    avatarBox: "w-10 h-10",
-                    userButtonPopoverCard: "shadow-lg",
-                  }
-                }}
-                showName={false}
-              />
-              <div className="hidden md:block">
-                <p className="text-sm font-medium text-gray-900">
-                  {user?.fullName || user?.firstName || 'User'}
-                </p>
-                <p className="text-xs text-gray-500">
-                  {user?.publicMetadata?.role as string || 'Member'}
-                </p>
+            <SignedIn>
+              <button 
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <Bell className="h-5 w-5" />
+                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+              </button>
+              {showNotifications && (
+                <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
+                  <h3 className="px-4 py-2 text-sm font-medium text-gray-900 border-b border-gray-200">Notifications</h3>
+                  <div className="max-h-64 overflow-y-auto">
+                    <div className="px-4 py-3 hover:bg-gray-50 border-b border-gray-100">
+                      <p className="text-sm text-gray-900">New task assigned to you</p>
+                      <p className="text-xs text-gray-500">2 hours ago</p>
+                    </div>
+                    <div className="px-4 py-3 hover:bg-gray-50 border-b border-gray-100">
+                      <p className="text-sm text-gray-900">Project deadline approaching</p>
+                      <p className="text-xs text-gray-500">1 day ago</p>
+                    </div>
+                    <div className="px-4 py-3 hover:bg-gray-50">
+                      <p className="text-sm text-gray-900">New comment on your task</p>
+                      <p className="text-xs text-gray-500">3 days ago</p>
+                    </div>
+                  </div>
+                  <button className="w-full px-4 py-2 text-sm text-blue-600 hover:bg-blue-50">View all notifications</button>
+                </div>
+              )}
+              <button onClick={() => router.push('/settings')} className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
+                <Settings className="h-5 w-5" />
+              </button>
+              <div className="flex items-center space-x-3">
+                <UserButton 
+                  appearance={{
+                    elements: {
+                      avatarBox: "w-10 h-10",
+                      userButtonPopoverCard: "shadow-lg",
+                    }
+                  }}
+                  showName={false}
+                />
+                <div className="hidden md:block">
+                  <p className="text-sm font-medium text-gray-900">
+                    {user?.fullName || user?.firstName || 'User'}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {user?.publicMetadata?.role as string || 'Member'}
+                  </p>
+                </div>
               </div>
-            </div>
+            </SignedIn>
+            <SignedOut>
+              <button onClick={() => router.push('/sign-in')} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                Sign In
+              </button>
+            </SignedOut>
 
             {/* Mobile Menu */}
             <button className="md:hidden p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
