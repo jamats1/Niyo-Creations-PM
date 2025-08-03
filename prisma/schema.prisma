@@ -1,5 +1,5 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+// Industry-focused Project Management Schema
+// Optimized for IT Agency, Construction Firm, and Interior Design
 
 generator client {
   provider = "prisma-client-js"
@@ -11,213 +11,97 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String
-  role      UserRole @default(USER)
-  avatar    String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  assignedTasks    Task[]     @relation("TaskAssignee")
-  createdTasks     Task[]     @relation("TaskCreator")
-  createdProjects  Project[]  @relation("ProjectCreator")
-  projectMembers   ProjectMember[]
-  comments         Comment[]
-  activities       Activity[]
+  id          String   @id @default(cuid())
+  email       String   @unique
+  name        String
+  role        Role
+  avatarUrl   String?
+  teams       TeamMember[]
+  tasks       Task[]        @relation("AssignedTasks")
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
 
   @@map("users")
 }
 
-model Project {
-  id          String        @id @default(cuid())
-  name        String
-  description String?
-  status      ProjectStatus @default(PLANNING)
-  priority    Priority      @default(MEDIUM)
-  startDate   DateTime?
-  endDate     DateTime?
-  budget      Float?
-  categories  String?       // JSON string of category array
-  tags        String?       // JSON string of tag array
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+enum Role {
+  ADMIN
+  MEMBER
+  CLIENT
+}
 
-  // Relations
-  creatorId   String
-  creator     User          @relation("ProjectCreator", fields: [creatorId], references: [id])
-  members     ProjectMember[]
+model Team {
+  id        String        @id @default(cuid())
+  name      String
+  members   TeamMember[]
+  projects  Project[]
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@map("teams")
+}
+
+model TeamMember {
+  id      String   @id @default(cuid())
+  userId  String
+  teamId  String
+  role    Role
+  user    User     @relation(fields: [userId], references: [id])
+  team    Team     @relation(fields: [teamId], references: [id])
+
+  @@unique([userId, teamId])
+  @@map("team_members")
+}
+
+model Project {
+  id          String     @id @default(cuid())
+  title       String
+  description String?
+  type        ProjectType
+  status      ProjectStatus
+  teamId      String
+  clientId    String?
+  deadline    DateTime?
   tasks       Task[]
-  clients     ProjectClient[]
-  comments    Comment[]
-  activities  Activity[]
+  documents   Document[]
+  team        Team       @relation(fields: [teamId], references: [id])
+  client      Client?    @relation(fields: [clientId], references: [id])
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
 
   @@map("projects")
 }
 
-model ProjectMember {
-  id        String   @id @default(cuid())
-  role      String   @default("member") // "owner", "admin", "member", "viewer"
-  joinedAt  DateTime @default(now())
-
-  // Relations
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  projectId String
-  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, projectId])
-  @@map("project_members")
-}
-
-model Client {
-  id          String   @id @default(cuid())
-  name        String
-  email       String   @unique
-  phone       String?
-  company     String?
-  address     Address?
-  notes       String?
-  status      ClientStatus @default(ACTIVE)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  projects    ProjectClient[]
-  comments    Comment[]
-  activities  Activity[]
-
-  @@map("clients")
-}
-
-model ProjectClient {
-  id        String   @id @default(cuid())
-  role      String   @default("client") // "client", "stakeholder", "sponsor"
-  joinedAt  DateTime @default(now())
-
-  // Relations
-  clientId   String
-  client     Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  projectId  String
-  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-
-  @@unique([clientId, projectId])
-  @@map("project_clients")
-}
-
-model Task {
-  id          String   @id @default(cuid())
-  title       String
-  description String?
-  status      TaskStatus @default(TODO)
-  priority    Priority   @default(MEDIUM)
-  dueDate     DateTime?
-  estimatedHours Float?
-  actualHours   Float?
-  tags        String?     // JSON string of tag array
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-
-  // Relations
-  projectId   String
-  project     Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  assigneeId  String?
-  assignee    User?       @relation("TaskAssignee", fields: [assigneeId], references: [id])
-  creatorId   String
-  creator     User        @relation("TaskCreator", fields: [creatorId], references: [id])
-  comments    Comment[]
-  attachments Attachment[]
-  activities  Activity[]
-
-  @@map("tasks")
-}
-
-model Comment {
-  id        String   @id @default(cuid())
-  content   String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  authorId   String
-  author     User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  taskId     String?
-  task       Task?    @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  projectId  String?
-  project    Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  clientId   String?
-  client     Client?  @relation(fields: [clientId], references: [id], onDelete: Cascade)
-
-  @@map("comments")
-}
-
-model Attachment {
-  id        String   @id @default(cuid())
-  filename  String
-  filepath  String
-  filesize  Int
-  mimetype  String
-  createdAt DateTime @default(now())
-
-  // Relations
-  taskId     String
-  task       Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
-
-  @@map("attachments")
-}
-
-model Activity {
-  id        String       @id @default(cuid())
-  type      ActivityType
-  description String
-  metadata  String?      // JSON string for additional data
-  createdAt DateTime     @default(now())
-
-  // Relations
-  userId    String?
-  user      User?        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  projectId String?
-  project   Project?     @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  taskId    String?
-  task      Task?        @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  clientId  String?
-  client    Client?      @relation(fields: [clientId], references: [id], onDelete: Cascade)
-
-  @@map("activities")
-}
-
-model Address {
-  id          String   @id @default(cuid())
-  street      String?
-  city        String?
-  state       String?
-  postalCode  String?
-  country     String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  clientId    String   @unique
-  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
-
-  @@map("addresses")
-}
-
-// Enums
-enum UserRole {
-  ADMIN
-  MANAGER
-  USER
-  VIEWER
+enum ProjectType {
+  IT
+  CONSTRUCTION
+  INTERIOR_DESIGN
 }
 
 enum ProjectStatus {
+  DRAFT
   PLANNING
-  IN_PROGRESS
-  ON_HOLD
+  EXECUTING
+  REVIEW
   COMPLETED
-  CANCELLED
+  ON_HOLD
+}
+
+model Task {
+  id          String     @id @default(cuid())
+  title       String
+  description String?
+  status      TaskStatus
+  priority    TaskPriority
+  dueDate     DateTime?
+  assignedTo  String?
+  projectId   String
+  assignee    User?      @relation("AssignedTasks", fields: [assignedTo], references: [id])
+  project     Project    @relation(fields: [projectId], references: [id])
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@map("tasks")
 }
 
 enum TaskStatus {
@@ -227,28 +111,36 @@ enum TaskStatus {
   DONE
 }
 
-enum Priority {
+enum TaskPriority {
   LOW
   MEDIUM
   HIGH
-  URGENT
+  CRITICAL
 }
 
-enum ClientStatus {
-  ACTIVE
-  INACTIVE
-  PROSPECT
-  FORMER
+model Client {
+  id          String     @id @default(cuid())
+  name        String
+  email       String?
+  phone       String?
+  company     String?
+  notes       String?
+  projects    Project[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@map("clients")
 }
 
-enum ActivityType {
-  TASK_CREATED
-  TASK_UPDATED
-  TASK_COMPLETED
-  PROJECT_CREATED
-  PROJECT_UPDATED
-  CLIENT_ADDED
-  COMMENT_ADDED
-  FILE_UPLOADED
-  MEETING_SCHEDULED
+model Document {
+  id         String    @id @default(cuid())
+  name       String
+  url        String
+  projectId  String
+  project    Project   @relation(fields: [projectId], references: [id])
+  uploadedAt DateTime  @default(now())
+
+  @@map("documents")
 }
+
+

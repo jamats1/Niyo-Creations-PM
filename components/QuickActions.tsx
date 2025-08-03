@@ -19,7 +19,7 @@ const actions = [
     color: 'bg-blue-500',
     action: () => {
       // Open project modal
-      console.log('Open new project modal');
+      useModalStore.getState().openProjectModal();
     },
   },
   {

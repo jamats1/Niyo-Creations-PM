@@ -1,60 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
 import { prisma } from '@/lib/db'
 
 export async function GET() {
   try {
+    const { userId } = auth()
+    
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
     const projects = await prisma.project.findMany({
       include: {
-        creator: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            avatar: true,
-          },
-        },
-        members: {
+        team: {
           include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                avatar: true,
+            members: {
+              include: {
+                user: true,
               },
             },
           },
         },
-        clients: {
-          include: {
-            client: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                company: true,
-              },
-            },
-          },
-        },
+        client: true,
         tasks: {
           include: {
-            assignee: {
-              select: {
-                id: true,
-                name: true,
-                avatar: true,
-              },
-            },
+            assignee: true,
           },
         },
-        _count: {
-          select: {
-            tasks: true,
-            members: true,
-            clients: true,
-          },
-        },
+        documents: true,
       },
       orderBy: {
         createdAt: 'desc',
@@ -73,42 +48,48 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const { userId } = auth()
+    
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
     const body = await request.json()
     const {
-      name,
+      title,
       description,
+      type,
       status,
-      priority,
-      startDate,
-      endDate,
-      budget,
-      categories,
-      tags,
-      creatorId,
+      teamId,
+      clientId,
+      deadline,
     } = body
 
     const project = await prisma.project.create({
       data: {
-        name,
+        title,
         description,
-        status,
-        priority,
-        startDate: startDate ? new Date(startDate) : null,
-        endDate: endDate ? new Date(endDate) : null,
-        budget: budget ? parseFloat(budget) : null,
-        categories: categories ? JSON.stringify(categories) : null,
-        tags: tags ? JSON.stringify(tags) : null,
-        creatorId,
+        type: type || 'IT',
+        status: status || 'PLANNING',
+        teamId,
+        clientId,
+        deadline: deadline ? new Date(deadline) : null,
       },
       include: {
-        creator: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            avatar: true,
+        team: {
+          include: {
+            members: {
+              include: {
+                user: true,
+              },
+            },
           },
         },
+        client: true,
+        tasks: true,
+        documents: true,
       },
     })
 

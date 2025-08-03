@@ -1,28 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
 import { prisma } from '@/lib/db'
 
 export async function GET() {
   try {
+    const { userId } = auth()
+    
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
     const clients = await prisma.client.findMany({
       include: {
-        address: true,
         projects: {
           include: {
-            project: {
-              select: {
-                id: true,
-                name: true,
-                status: true,
-                priority: true,
-              },
-            },
-          },
-        },
-        _count: {
-          select: {
-            projects: true,
-            comments: true,
-            activities: true,
+            team: true,
+            tasks: true,
           },
         },
       },
@@ -43,15 +38,21 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const { userId } = auth()
+    
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
     const body = await request.json()
     const {
       name,
       email,
       phone,
       company,
-      status,
       notes,
-      address,
     } = body
 
     const client = await prisma.client.create({
@@ -60,20 +61,10 @@ export async function POST(request: NextRequest) {
         email,
         phone,
         company,
-        status,
         notes,
-        address: address ? {
-          create: {
-            street: address.street,
-            city: address.city,
-            state: address.state,
-            postalCode: address.postalCode,
-            country: address.country,
-          },
-        } : undefined,
       },
       include: {
-        address: true,
+        projects: true,
       },
     })
 
@@ -85,4 +76,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     )
   }
-} 
+}

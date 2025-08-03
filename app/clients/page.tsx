@@ -3,45 +3,50 @@
 import { useState, useEffect } from 'react';
 import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
-import { Plus, Search, Mail, Phone, Building, MapPin, Calendar, DollarSign } from 'lucide-react';
-import { cn } from '@/utils/cn';
+import { 
+  Plus, 
+  Search, 
+  Building2, 
+  Mail, 
+  Phone, 
+  User, 
+  Edit, 
+  Trash2,
+  MoreHorizontal,
+  Calendar,
+  FileText,
+  TrendingUp
+} from 'lucide-react';
+import { useModalStore } from '@/store/modalStore';
+import Link from 'next/link';
 
 interface Client {
   id: string;
   name: string;
-  email: string;
-  phone: string;
-  company: string;
-  status: string;
-  notes: string;
+  email: string | null;
+  phone: string | null;
+  company: string | null;
+  notes: string | null;
   createdAt: string;
-  address: {
-    street: string;
-    city: string;
-    state: string;
-    postalCode: string;
-    country: string;
-  } | null;
+  updatedAt: string;
   projects: Array<{
-    project: {
+    id: string;
+    title: string;
+    type: 'IT' | 'CONSTRUCTION' | 'INTERIOR_DESIGN';
+    status: 'DRAFT' | 'PLANNING' | 'EXECUTING' | 'REVIEW' | 'COMPLETED' | 'ON_HOLD';
+    deadline: string | null;
+    tasks: Array<{
       id: string;
-      name: string;
       status: string;
-      priority: string;
-    };
+    }>;
   }>;
-  _count: {
-    projects: number;
-    comments: number;
-    activities: number;
-  };
 }
 
 export default function ClientsPage() {
+  const { openClientModal } = useModalStore();
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
 
   useEffect(() => {
     fetchClients();
@@ -62,43 +67,76 @@ export default function ClientsPage() {
   };
 
   const filteredClients = clients.filter(client => {
-    const matchesSearch = client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         client.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         (client.company && client.company.toLowerCase().includes(searchQuery.toLowerCase()));
-    const matchesStatus = statusFilter === 'all' || client.status === statusFilter;
-    
-    return matchesSearch && matchesStatus;
+    const searchText = searchQuery.toLowerCase();
+    return (
+      client.name.toLowerCase().includes(searchText) ||
+      client.email?.toLowerCase().includes(searchText) ||
+      client.company?.toLowerCase().includes(searchText)
+    );
   });
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'ACTIVE': return 'bg-green-100 text-green-800';
-      case 'INACTIVE': return 'bg-gray-100 text-gray-800';
-      case 'PROSPECT': return 'bg-blue-100 text-blue-800';
-      case 'FORMER': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+  const getTypeIcon = (type: string) => {
+    switch (type) {
+      case 'IT': return '💻';
+      case 'CONSTRUCTION': return '🏗️';
+      case 'INTERIOR_DESIGN': return '🎨';
+      default: return '📁';
     }
   };
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'LOW': return 'bg-green-100 text-green-800';
-      case 'MEDIUM': return 'bg-yellow-100 text-yellow-800';
-      case 'HIGH': return 'bg-orange-100 text-orange-800';
-      case 'URGENT': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
+  const getStatusColor = (status: string) => {
+    const colors = {
+      DRAFT: 'bg-gray-100 text-gray-800',
+      PLANNING: 'bg-blue-100 text-blue-800',
+      EXECUTING: 'bg-yellow-100 text-yellow-800',
+      REVIEW: 'bg-purple-100 text-purple-800',
+      COMPLETED: 'bg-green-100 text-green-800',
+      ON_HOLD: 'bg-red-100 text-red-800',
+    };
+    return colors[status as keyof typeof colors] || 'bg-gray-100 text-gray-800';
+  };
+
+  const getClientStats = (client: Client) => {
+    const totalProjects = client.projects.length;
+    const activeProjects = client.projects.filter(p => 
+      ['PLANNING', 'EXECUTING', 'REVIEW'].includes(p.status)
+    ).length;
+    const completedProjects = client.projects.filter(p => p.status === 'COMPLETED').length;
+    const totalTasks = client.projects.reduce((acc, project) => acc + project.tasks.length, 0);
+    const completedTasks = client.projects.reduce((acc, project) => 
+      acc + project.tasks.filter(task => task.status === 'DONE').length, 0
+    );
+
+    return {
+      totalProjects,
+      activeProjects,
+      completedProjects,
+      totalTasks,
+      completedTasks,
+      completionRate: totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0,
+    };
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
         <Header />
         <div className="flex">
           <Sidebar />
           <main className="flex-1 p-6">
-            <div className="flex items-center justify-center h-64">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+            <div className="animate-pulse space-y-6">
+              <div className="h-8 bg-gray-200 rounded w-1/3"></div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <div key={i} className="bg-white rounded-xl border border-gray-200 p-6">
+                    <div className="h-6 bg-gray-200 rounded mb-4"></div>
+                    <div className="space-y-3">
+                      <div className="h-4 bg-gray-100 rounded"></div>
+                      <div className="h-4 bg-gray-100 rounded w-2/3"></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </main>
         </div>
@@ -107,187 +145,237 @@ export default function ClientsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       <Header />
       
       <div className="flex">
         <Sidebar />
         
         <main className="flex-1 p-6">
-          <div className="w-full">
+          <div className="w-full max-w-7xl mx-auto">
             {/* Page Header */}
             <div className="mb-8">
               <div className="flex items-center justify-between">
                 <div>
-                  <h1 className="text-3xl font-bold text-gray-900 mb-2">Clients</h1>
-                  <p className="text-gray-600">Manage your client relationships and contacts</p>
+                  <h1 className="text-3xl font-bold text-slate-900 mb-2">Client Management</h1>
+                  <p className="text-slate-600">Manage your client relationships and track project progress</p>
                 </div>
-                <button className="btn btn-primary flex items-center space-x-2">
+                <button 
+                  onClick={() => openClientModal()}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
                   <Plus className="h-4 w-4" />
-                  <span>New Client</span>
+                  Add Client
                 </button>
               </div>
             </div>
 
-            {/* Filters and Search */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-              <div className="flex flex-col lg:flex-row gap-4">
-                {/* Search */}
-                <div className="flex-1">
+            {/* Search and Stats */}
+            <div className="bg-white/80 backdrop-blur-sm rounded-xl border border-gray-200 p-6 mb-6">
+              <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
+                <div className="flex-1 max-w-md">
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                     <input
                       type="text"
-                      placeholder="Search clients by name, email, or company..."
+                      placeholder="Search clients..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
                 </div>
-
-                {/* Status Filter */}
-                <div>
-                  <select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="all">All Status</option>
-                    <option value="ACTIVE">Active</option>
-                    <option value="INACTIVE">Inactive</option>
-                    <option value="PROSPECT">Prospect</option>
-                    <option value="FORMER">Former</option>
-                  </select>
+                
+                <div className="flex items-center gap-6 text-sm text-gray-600">
+                  <div className="flex items-center gap-2">
+                    <User className="h-4 w-4" />
+                    <span>{clients.length} Total Clients</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Building2 className="h-4 w-4" />
+                    <span>{clients.filter(c => c.company).length} Companies</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    <span>{clients.reduce((acc, c) => acc + c.projects.length, 0)} Projects</span>
+                  </div>
                 </div>
               </div>
             </div>
 
             {/* Clients Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredClients.map((client) => (
-                <div key={client.id} className="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
-                  <div className="p-6">
-                    {/* Client Header */}
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex-1">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-1">{client.name}</h3>
-                        {client.company && (
-                          <p className="text-sm text-gray-600 flex items-center">
-                            <Building className="h-4 w-4 mr-1" />
-                            {client.company}
-                          </p>
-                        )}
-                      </div>
-                      <span className={cn("px-2 py-1 rounded-full text-xs font-medium", getStatusColor(client.status))}>
-                        {client.status}
-                      </span>
-                    </div>
-
-                    {/* Contact Information */}
-                    <div className="space-y-3 mb-4">
-                      <div className="flex items-center text-sm text-gray-600">
-                        <Mail className="h-4 w-4 mr-2" />
-                        <a href={`mailto:${client.email}`} className="hover:text-blue-600">
-                          {client.email}
-                        </a>
-                      </div>
-                      
-                      {client.phone && (
-                        <div className="flex items-center text-sm text-gray-600">
-                          <Phone className="h-4 w-4 mr-2" />
-                          <a href={`tel:${client.phone}`} className="hover:text-blue-600">
-                            {client.phone}
-                          </a>
-                        </div>
-                      )}
-
-                      {client.address && (
-                        <div className="flex items-start text-sm text-gray-600">
-                          <MapPin className="h-4 w-4 mr-2 mt-0.5" />
+              {filteredClients.map((client) => {
+                const stats = getClientStats(client);
+                
+                return (
+                  <div key={client.id} className="bg-white/80 backdrop-blur-sm rounded-xl border border-gray-200 hover:shadow-lg transition-all duration-200 group">
+                    <div className="p-6">
+                      {/* Client Header */}
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-blue-200 rounded-xl flex items-center justify-center">
+                            <User className="h-6 w-6 text-blue-600" />
+                          </div>
                           <div>
-                            <div>{client.address.street}</div>
-                            <div>{client.address.city}, {client.address.state} {client.address.postalCode}</div>
-                            <div>{client.address.country}</div>
+                            <h3 className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+                              {client.name}
+                            </h3>
+                            {client.company && (
+                              <p className="text-sm text-gray-600">{client.company}</p>
+                            )}
                           </div>
                         </div>
-                      )}
-                    </div>
-
-                    {/* Client Stats */}
-                    <div className="flex items-center justify-between mb-4 text-sm text-gray-600">
-                      <div className="flex items-center">
-                        <Calendar className="h-4 w-4 mr-1" />
-                        <span>Since {new Date(client.createdAt).toLocaleDateString()}</span>
-                      </div>
-                      
-                      <div className="flex items-center">
-                        <DollarSign className="h-4 w-4 mr-1" />
-                        <span>{client._count.projects} projects</span>
-                      </div>
-                    </div>
-
-                    {/* Active Projects */}
-                    {client.projects.length > 0 && (
-                      <div className="mb-4">
-                        <h4 className="text-sm font-medium text-gray-900 mb-2">Active Projects</h4>
-                        <div className="space-y-2">
-                          {client.projects.slice(0, 3).map((projectData) => (
-                            <div key={projectData.project.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                              <span className="text-sm text-gray-700">{projectData.project.name}</span>
-                              <div className="flex gap-1">
-                                <span className={cn("px-1 py-0.5 rounded text-xs", getStatusColor(projectData.project.status))}>
-                                  {projectData.project.status.replace('_', ' ')}
-                                </span>
-                                <span className={cn("px-1 py-0.5 rounded text-xs", getPriorityColor(projectData.project.priority))}>
-                                  {projectData.project.priority}
-                                </span>
-                              </div>
-                            </div>
-                          ))}
-                          {client.projects.length > 3 && (
-                            <div className="text-xs text-gray-500 text-center">
-                              +{client.projects.length - 3} more projects
-                            </div>
-                          )}
+                        
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => openClientModal(client.id)}
+                            className="p-1 text-gray-400 hover:text-blue-600 rounded transition-colors"
+                            title="Edit client"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </button>
+                          <button className="p-1 text-gray-400 hover:text-gray-600 rounded transition-colors">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </button>
                         </div>
                       </div>
-                    )}
 
-                    {/* Notes */}
-                    {client.notes && (
-                      <div className="mb-4">
-                        <h4 className="text-sm font-medium text-gray-900 mb-2">Notes</h4>
-                        <p className="text-sm text-gray-600 bg-gray-50 p-2 rounded">
-                          {client.notes}
-                        </p>
+                      {/* Contact Info */}
+                      <div className="space-y-2 mb-4">
+                        {client.email && (
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <Mail className="h-4 w-4 text-gray-400" />
+                            <span className="truncate">{client.email}</span>
+                          </div>
+                        )}
+                        {client.phone && (
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <Phone className="h-4 w-4 text-gray-400" />
+                            <span>{client.phone}</span>
+                          </div>
+                        )}
                       </div>
-                    )}
 
-                    {/* Actions */}
-                    <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-                      <div className="flex items-center space-x-4 text-sm text-gray-600">
-                        <span>{client._count.activities} activities</span>
-                        <span>{client._count.comments} comments</span>
+                      {/* Project Stats */}
+                      <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                        <div className="grid grid-cols-2 gap-4 text-center">
+                          <div>
+                            <div className="text-lg font-semibold text-gray-900">{stats.totalProjects}</div>
+                            <div className="text-xs text-gray-600">Total Projects</div>
+                          </div>
+                          <div>
+                            <div className="text-lg font-semibold text-blue-600">{stats.activeProjects}</div>
+                            <div className="text-xs text-gray-600">Active</div>
+                          </div>
+                        </div>
+                        
+                        {stats.totalTasks > 0 && (
+                          <div className="mt-3">
+                            <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
+                              <span>Task Progress</span>
+                              <span>{stats.completionRate}%</span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-2">
+                              <div 
+                                className="bg-blue-500 h-2 rounded-full transition-all duration-500"
+                                style={{ width: `${stats.completionRate}%` }}
+                              ></div>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                      
-                      <div className="flex space-x-2">
-                        <button className="text-sm text-blue-600 hover:text-blue-800">View Details</button>
-                        <button className="text-sm text-gray-600 hover:text-gray-800">Edit</button>
+
+                      {/* Recent Projects */}
+                      {client.projects.length > 0 ? (
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="text-sm font-medium text-gray-900">Recent Projects</h4>
+                            <span className="text-xs text-gray-500">{client.projects.length} total</span>
+                          </div>
+                          <div className="space-y-2">
+                            {client.projects.slice(0, 2).map((project) => (
+                              <Link key={project.id} href={`/projects/${project.id}`}>
+                                <div className="flex items-center justify-between p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer group">
+                                  <div className="flex items-center gap-2 flex-1">
+                                    <span className="text-sm">{getTypeIcon(project.type)}</span>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="text-sm font-medium text-gray-900 truncate group-hover:text-blue-600">
+                                        {project.title}
+                                      </div>
+                                      <div className="flex items-center gap-2 mt-1">
+                                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(project.status)}`}>
+                                          {project.status.replace('_', ' ')}
+                                        </span>
+                                        {project.deadline && (
+                                          <span className="text-xs text-gray-500">
+                                            Due {new Date(project.deadline).toLocaleDateString()}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </Link>
+                            ))}
+                            {client.projects.length > 2 && (
+                              <div className="text-center">
+                                <span className="text-xs text-blue-600 hover:text-blue-800 cursor-pointer">
+                                  +{client.projects.length - 2} more projects
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-center py-4 text-gray-500">
+                          <FileText className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                          <p className="text-sm">No projects yet</p>
+                          <button className="text-xs text-blue-600 hover:text-blue-800 mt-1">
+                            Create first project
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Client Since */}
+                      <div className="mt-4 pt-4 border-t border-gray-200">
+                        <div className="flex items-center justify-between text-xs text-gray-500">
+                          <span>Client since {new Date(client.createdAt).toLocaleDateString()}</span>
+                          <div className="flex items-center gap-1">
+                            <TrendingUp className="h-3 w-3" />
+                            <span>{stats.completedProjects} completed</span>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
-            {filteredClients.length === 0 && (
+            {/* Empty State */}
+            {filteredClients.length === 0 && !loading && (
               <div className="text-center py-12">
                 <div className="text-gray-400 mb-4">
-                  <Building className="h-12 w-12 mx-auto" />
+                  <User className="h-16 w-16 mx-auto" />
                 </div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No clients found</h3>
-                <p className="text-gray-600">Try adjusting your search or filters</p>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  {searchQuery ? 'No clients found' : 'No clients yet'}
+                </h3>
+                <p className="text-gray-600 mb-4">
+                  {searchQuery 
+                    ? 'Try adjusting your search terms' 
+                    : 'Start building your client relationships by adding your first client'
+                  }
+                </p>
+                {!searchQuery && (
+                  <button 
+                    onClick={() => openClientModal()}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    Add Your First Client
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -295,4 +383,4 @@ export default function ClientsPage() {
       </div>
     </div>
   );
-} 
+}

@@ -1,51 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
 import { prisma } from '@/lib/db'
 
 export async function GET() {
   try {
+    const { userId } = auth()
+    
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
     const tasks = await prisma.task.findMany({
       include: {
+        assignee: true,
         project: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        assignee: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            avatar: true,
-          },
-        },
-        creator: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            avatar: true,
-          },
-        },
-        comments: {
           include: {
-            author: {
-              select: {
-                id: true,
-                name: true,
-                avatar: true,
-              },
-            },
-          },
-          orderBy: {
-            createdAt: 'desc',
-          },
-        },
-        attachments: true,
-        _count: {
-          select: {
-            comments: true,
-            attachments: true,
+            team: true,
+            client: true,
           },
         },
       },
@@ -66,6 +39,14 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const { userId } = auth()
+    
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
     const body = await request.json()
     const {
       title,
@@ -73,49 +54,26 @@ export async function POST(request: NextRequest) {
       status,
       priority,
       dueDate,
-      estimatedHours,
-      actualHours,
-      tags,
       projectId,
-      assigneeId,
-      creatorId,
+      assignedTo,
     } = body
 
     const task = await prisma.task.create({
       data: {
         title,
         description,
-        status,
-        priority,
+        status: status || 'TODO',
+        priority: priority || 'MEDIUM',
         dueDate: dueDate ? new Date(dueDate) : null,
-        estimatedHours: estimatedHours ? parseFloat(estimatedHours) : null,
-        actualHours: actualHours ? parseFloat(actualHours) : null,
-        tags: tags ? JSON.stringify(tags) : null,
         projectId,
-        assigneeId,
-        creatorId,
+        assignedTo,
       },
       include: {
+        assignee: true,
         project: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        assignee: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            avatar: true,
-          },
-        },
-        creator: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            avatar: true,
+          include: {
+            team: true,
+            client: true,
           },
         },
       },

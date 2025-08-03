@@ -15,13 +15,13 @@ export default function TaskCard({ task }: TaskCardProps) {
 
   const getPriorityColor = (priority: Task['priority']) => {
     switch (priority) {
-      case 'urgent':
+      case 'CRITICAL':
         return 'bg-red-500';
-      case 'high':
+      case 'HIGH':
         return 'bg-orange-500';
-      case 'medium':
+      case 'MEDIUM':
         return 'bg-yellow-500';
-      case 'low':
+      case 'LOW':
         return 'bg-green-500';
       default:
         return 'bg-gray-500';
@@ -30,13 +30,13 @@ export default function TaskCard({ task }: TaskCardProps) {
 
   const getPriorityText = (priority: Task['priority']) => {
     switch (priority) {
-      case 'urgent':
-        return 'Urgent';
-      case 'high':
+      case 'CRITICAL':
+        return 'Critical';
+      case 'HIGH':
         return 'High';
-      case 'medium':
+      case 'MEDIUM':
         return 'Medium';
-      case 'low':
+      case 'LOW':
         return 'Low';
       default:
         return 'Low';
@@ -78,25 +78,12 @@ export default function TaskCard({ task }: TaskCardProps) {
         </p>
       )}
 
-      {/* Tags */}
-      {task.tags.length > 0 && (
-        <div className="flex flex-wrap gap-1 mb-3">
-          {task.tags.slice(0, 3).map((tag, index) => (
-            <span
-              key={index}
-              className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
-            >
-              <Tag className="h-3 w-3 mr-1" />
-              {tag}
-            </span>
-          ))}
-          {task.tags.length > 3 && (
-            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
-              +{task.tags.length - 3}
-            </span>
-          )}
-        </div>
-      )}
+      {/* Project Type Badge */}
+      <div className="flex items-center gap-2 mb-3">
+        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+          {task.project.type.replace('_', ' ')}
+        </span>
+      </div>
 
       {/* Task Meta Information */}
       <div className="space-y-2">
@@ -116,14 +103,14 @@ export default function TaskCard({ task }: TaskCardProps) {
         {/* Estimated Hours */}
         <div className="flex items-center text-xs text-gray-500">
           <Clock className="h-3 w-3 mr-1" />
-          <span>{task.estimatedHours}h estimated</span>
+          <span>Task in {task.project.title}</span>
         </div>
 
         {/* Assignee */}
-        {task.assigneeId && (
+        {task.assignee && (
           <div className="flex items-center text-xs text-gray-500">
             <User className="h-3 w-3 mr-1" />
-            <span>Assigned to {task.assigneeId}</span>
+            <span>Assigned to {task.assignee.name}</span>
           </div>
         )}
       </div>
@@ -134,13 +121,13 @@ export default function TaskCard({ task }: TaskCardProps) {
           {/* Comments */}
           <div className="flex items-center text-xs text-gray-500">
             <MessageCircle className="h-3 w-3 mr-1" />
-            <span>{task.comments.length}</span>
+            <span>0</span>
           </div>
 
           {/* Attachments */}
           <div className="flex items-center text-xs text-gray-500">
             <Paperclip className="h-3 w-3 mr-1" />
-            <span>{task.attachments.length}</span>
+            <span>0</span>
           </div>
         </div>
 

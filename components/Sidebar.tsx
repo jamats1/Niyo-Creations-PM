@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { usePermissions } from '@/utils/permissions';
 import { 
   LayoutDashboard, 
   Kanban, 
@@ -55,6 +56,7 @@ const navigation = [
     href: '/reports',
     icon: BarChart3,
     current: false,
+    requiresPermission: 'canViewReports',
   },
   {
     name: 'Documents',
@@ -67,6 +69,7 @@ const navigation = [
     href: '/settings',
     icon: Settings,
     current: false,
+    requiresPermission: 'canManageUsers',
   },
 ];
 
@@ -107,6 +110,7 @@ const projectCategories = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const { canViewReports, canManageUsers, hasRole } = usePermissions();
   const [collapsed, setCollapsed] = useState(false);
 
   return (
@@ -138,6 +142,18 @@ export default function Sidebar() {
       <nav className="px-2 py-4 space-y-1">
         {navigation.map((item) => {
           const isActive = pathname === item.href;
+          
+          // Check permissions for protected routes
+          if (item.requiresPermission) {
+            const hasPermission = item.requiresPermission === 'canViewReports' 
+              ? canViewReports() 
+              : item.requiresPermission === 'canManageUsers' 
+              ? canManageUsers() 
+              : true;
+            
+            if (!hasPermission) return null;
+          }
+          
           return (
             <Link
               key={item.name}

@@ -3,6 +3,8 @@ import { Board, Task, TypedColumn } from '@/types';
 
 interface BoardState {
   board: Board;
+  loading: boolean;
+  error: string | null;
   getBoard: () => void;
   setBoard: (board: Board) => void;
   updateTaskInColumn: (taskId: string, columnId: TypedColumn, task: Task) => void;
@@ -14,60 +16,51 @@ interface BoardState {
 export const useBoardStore = create<BoardState>((set, get) => ({
   board: {
     columns: new Map<TypedColumn, { id: TypedColumn; tasks: Task[] }>([
-      ['todo', { id: 'todo', tasks: [] }],
-      ['in-progress', { id: 'in-progress', tasks: [] }],
-      ['review', { id: 'review', tasks: [] }],
-      ['done', { id: 'done', tasks: [] }],
+      ['TODO', { id: 'TODO', tasks: [] }],
+      ['IN_PROGRESS', { id: 'IN_PROGRESS', tasks: [] }],
+      ['REVIEW', { id: 'REVIEW', tasks: [] }],
+      ['DONE', { id: 'DONE', tasks: [] }],
     ]),
   },
+  loading: false,
+  error: null,
 
   getBoard: async () => {
+    set({ loading: true, error: null });
     try {
       const response = await fetch('/api/tasks');
+      
       if (!response.ok) {
-        throw new Error('Failed to fetch tasks');
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
       
-      const tasks = await response.json();
+      const data = await response.json();
       
-      // Transform database tasks to our Task format
-      const transformedTasks: Task[] = tasks.map((task: any) => ({
-        id: task.id,
-        title: task.title,
-        description: task.description,
-        status: task.status.toLowerCase() as TypedColumn,
-        priority: task.priority.toLowerCase(),
-        dueDate: task.dueDate ? new Date(task.dueDate) : null,
-        estimatedHours: task.estimatedHours,
-        actualHours: task.actualHours,
-        tags: task.tags ? JSON.parse(task.tags) : [],
-        projectId: task.projectId,
-        assignee: task.assignee,
-        creator: task.creator,
-        commentsCount: task._count?.comments || 0,
-        attachmentsCount: task._count?.attachments || 0,
-        attachments: task.attachments || [],
-        comments: task.comments || [],
-        createdAt: new Date(task.createdAt),
-        updatedAt: new Date(task.updatedAt),
-      }));
+      // Handle error response from API
+      if (data.error) {
+        throw new Error(data.error);
+      }
+      
+      // Ensure we have an array of tasks
+      const tasks = Array.isArray(data) ? data : [];
 
       const columns = new Map<TypedColumn, { id: TypedColumn; tasks: Task[] }>([
-        ['todo', { id: 'todo', tasks: transformedTasks.filter(task => task.status === 'todo') }],
-        ['in-progress', { id: 'in-progress', tasks: transformedTasks.filter(task => task.status === 'in-progress') }],
-        ['review', { id: 'review', tasks: transformedTasks.filter(task => task.status === 'review') }],
-        ['done', { id: 'done', tasks: transformedTasks.filter(task => task.status === 'done') }],
+        ['TODO', { id: 'TODO', tasks: tasks.filter((task: Task) => task.status === 'TODO') }],
+        ['IN_PROGRESS', { id: 'IN_PROGRESS', tasks: tasks.filter((task: Task) => task.status === 'IN_PROGRESS') }],
+        ['REVIEW', { id: 'REVIEW', tasks: tasks.filter((task: Task) => task.status === 'REVIEW') }],
+        ['DONE', { id: 'DONE', tasks: tasks.filter((task: Task) => task.status === 'DONE') }],
       ]);
 
-      set({ board: { columns } });
+      set({ board: { columns }, loading: false });
     } catch (error) {
       console.error('Error fetching board:', error);
+      set({ error: 'Failed to fetch tasks', loading: false });
     }
   },
 
   setBoard: (board: Board) => set({ board }),
 
-  updateTaskInColumn: (taskId: string, columnId: TypedColumn, updatedTask: Task) => {
+  updateTaskInColumn: async (taskId: string, columnId: TypedColumn, updatedTask: Task) => {
     const { board } = get();
     const newColumns = new Map(board.columns);
     const column = newColumns.get(columnId);
@@ -78,10 +71,27 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       );
       newColumns.set(columnId, { ...column, tasks: updatedTasks });
       set({ board: { columns: newColumns } });
+
+      // Update via API
+      try {
+        await fetch(`/api/tasks/${taskId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: updatedTask.title,
+            description: updatedTask.description,
+            status: columnId,
+            priority: updatedTask.priority,
+            dueDate: updatedTask.dueDate?.toISOString(),
+          }),
+        });
+      } catch (error) {
+        console.error('Error updating task:', error);
+      }
     }
   },
 
-  deleteTask: (taskId: string, columnId: TypedColumn) => {
+  deleteTask: async (taskId: string, columnId: TypedColumn) => {
     const { board } = get();
     const newColumns = new Map(board.columns);
     const column = newColumns.get(columnId);
@@ -90,10 +100,19 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       const updatedTasks = column.tasks.filter(task => task.id !== taskId);
       newColumns.set(columnId, { ...column, tasks: updatedTasks });
       set({ board: { columns: newColumns } });
+
+      // Delete via API
+      try {
+        await fetch(`/api/tasks/${taskId}`, {
+          method: 'DELETE',
+        });
+      } catch (error) {
+        console.error('Error deleting task:', error);
+      }
     }
   },
 
-  addTask: (task: Task, columnId: TypedColumn) => {
+  addTask: async (task: Task, columnId: TypedColumn) => {
     const { board } = get();
     const newColumns = new Map(board.columns);
     const column = newColumns.get(columnId);
@@ -102,10 +121,29 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       const updatedTasks = [...column.tasks, task];
       newColumns.set(columnId, { ...column, tasks: updatedTasks });
       set({ board: { columns: newColumns } });
+
+      // Create via API
+      try {
+        await fetch('/api/tasks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: task.title,
+            description: task.description,
+            status: columnId,
+            priority: task.priority,
+            dueDate: task.dueDate?.toISOString(),
+            projectId: task.projectId,
+            assignedTo: task.assignedTo,
+          }),
+        });
+      } catch (error) {
+        console.error('Error creating task:', error);
+      }
     }
   },
 
-  moveTask: (taskId: string, fromColumnId: TypedColumn, toColumnId: TypedColumn, newIndex: number) => {
+  moveTask: async (taskId: string, fromColumnId: TypedColumn, toColumnId: TypedColumn, newIndex: number) => {
     const { board } = get();
     const newColumns = new Map(board.columns);
     
@@ -125,6 +163,19 @@ export const useBoardStore = create<BoardState>((set, get) => ({
           newColumns.set(toColumnId, { ...toColumn, tasks: updatedToTasks });
           
           set({ board: { columns: newColumns } });
+
+          // Update status via API
+          try {
+            await fetch(`/api/tasks/${taskId}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                status: toColumnId,
+              }),
+            });
+          } catch (error) {
+            console.error('Error updating task status:', error);
+          }
         }
       }
     }

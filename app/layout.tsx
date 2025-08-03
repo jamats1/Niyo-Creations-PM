@@ -1,6 +1,9 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
+import ModalManager from '@/components/ModalManager'
+import { ClerkProvider } from '@clerk/nextjs'
+import { dark } from '@clerk/themes'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -22,10 +25,27 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
-      <body className={`${inter.className} bg-gray-50`}>
-        {children}
-      </body>
-    </html>
+    <ClerkProvider
+      appearance={{
+        baseTheme: dark,
+        variables: {
+          colorPrimary: '#3B82F6',
+          colorBackground: '#F9FAFB',
+          colorInputBackground: '#FFFFFF',
+          colorInputText: '#111827',
+        },
+        elements: {
+          formButtonPrimary: 'bg-blue-600 hover:bg-blue-700 text-white',
+          card: 'shadow-lg',
+        },
+      }}
+    >
+      <html lang="en">
+        <body className={`${inter.className} bg-gray-50`}>
+          {children}
+          <ModalManager />
+        </body>
+      </html>
+    </ClerkProvider>
   )
 } 

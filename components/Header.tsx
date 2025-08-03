@@ -3,11 +3,13 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import { Search, User, Bell, Settings, Menu } from 'lucide-react';
+import { UserButton, useUser } from '@clerk/nextjs';
 
 import { cn } from '@/utils/cn';
 
 export default function Header() {
   const [searchQuery, setSearchQuery] = useState('');
+  const { user } = useUser();
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,12 +68,22 @@ export default function Header() {
 
             {/* User Profile */}
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-medium cursor-pointer">
-                JD
-              </div>
+              <UserButton 
+                appearance={{
+                  elements: {
+                    avatarBox: "w-10 h-10",
+                    userButtonPopoverCard: "shadow-lg",
+                  }
+                }}
+                showName={false}
+              />
               <div className="hidden md:block">
-                <p className="text-sm font-medium text-gray-900">John Doe</p>
-                <p className="text-xs text-gray-500">Project Manager</p>
+                <p className="text-sm font-medium text-gray-900">
+                  {user?.fullName || user?.firstName || 'User'}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {user?.publicMetadata?.role as string || 'Member'}
+                </p>
               </div>
             </div>
 

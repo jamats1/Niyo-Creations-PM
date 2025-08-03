@@ -1,17 +1,17 @@
-// Project Management Types
+// Industry-focused Project Management Types
 export interface Project {
   id: string;
-  name: string;
-  description: string;
-  status: 'planning' | 'in-progress' | 'completed' | 'on-hold';
-  priority: 'low' | 'medium' | 'high' | 'urgent';
-  startDate: Date;
-  endDate?: Date;
-  budget: number;
-  clientId: string;
-  teamMembers: string[];
-  tags: string[];
-  category: 'interior-design' | 'construction' | 'it' | 'consulting';
+  title: string;
+  description: string | null;
+  type: 'IT' | 'CONSTRUCTION' | 'INTERIOR_DESIGN';
+  status: 'DRAFT' | 'PLANNING' | 'EXECUTING' | 'REVIEW' | 'COMPLETED' | 'ON_HOLD';
+  teamId: string;
+  clientId: string | null;
+  deadline: Date | null;
+  team: Team;
+  client: Client | null;
+  tasks: Task[];
+  documents: Document[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -19,17 +19,14 @@ export interface Project {
 export interface Task {
   id: string;
   title: string;
-  description: string;
-  status: 'todo' | 'in-progress' | 'review' | 'done';
-  priority: 'low' | 'medium' | 'high' | 'urgent';
-  assigneeId?: string;
+  description: string | null;
+  status: 'TODO' | 'IN_PROGRESS' | 'REVIEW' | 'DONE';
+  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  dueDate: Date | null;
+  assignedTo: string | null;
   projectId: string;
-  dueDate?: Date;
-  estimatedHours: number;
-  actualHours?: number;
-  tags: string[];
-  attachments: Attachment[];
-  comments: Comment[];
+  assignee: User | null;
+  project: Project;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -37,29 +34,52 @@ export interface Task {
 export interface Client {
   id: string;
   name: string;
-  email: string;
-  phone: string;
-  company: string;
-  address: Address;
-  projects: string[];
-  status: 'active' | 'inactive' | 'prospect';
-  notes: string;
+  email: string | null;
+  phone: string | null;
+  company: string | null;
+  notes: string | null;
+  projects: Project[];
   createdAt: Date;
   updatedAt: Date;
 }
 
-export interface User {
+export interface Document {
   id: string;
   name: string;
+  url: string;
+  projectId: string;
+  project: Project;
+  uploadedAt: Date;
+}
+
+export interface User {
+  id: string;
   email: string;
-  avatar?: string;
-  role: 'admin' | 'manager' | 'designer' | 'developer' | 'contractor';
-  department: 'interior-design' | 'construction' | 'it' | 'sales' | 'management';
-  skills: string[];
-  hourlyRate: number;
-  isActive: boolean;
+  name: string;
+  role: 'ADMIN' | 'MEMBER' | 'CLIENT';
+  avatarUrl: string | null;
+  teams: TeamMember[];
+  tasks: Task[];
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface Team {
+  id: string;
+  name: string;
+  members: TeamMember[];
+  projects: Project[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface TeamMember {
+  id: string;
+  userId: string;
+  teamId: string;
+  role: 'ADMIN' | 'MEMBER' | 'CLIENT';
+  user: User;
+  team: Team;
 }
 
 export interface Comment {
@@ -90,7 +110,7 @@ export interface Address {
 }
 
 // Board Types (for Kanban board)
-export type TypedColumn = 'todo' | 'in-progress' | 'review' | 'done';
+export type TypedColumn = 'TODO' | 'IN_PROGRESS' | 'REVIEW' | 'DONE';
 
 export interface Column {
   id: TypedColumn;
