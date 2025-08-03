@@ -11,15 +11,16 @@ datasource db {
 }
 
 model User {
-  id          String   @id @default(cuid())
-  email       String   @unique
-  name        String
-  role        Role
-  avatarUrl   String?
-  teams       TeamMember[]
-  tasks       Task[]        @relation("AssignedTasks")
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  id             String   @id @default(cuid())
+  email          String   @unique
+  name           String
+  role           Role
+  avatarUrl      String?
+  teams          TeamMember[]
+  tasks          Task[]        @relation("AssignedTasks")
+  notifications  Notification[]
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
   @@map("users")
 }
@@ -143,4 +144,28 @@ model Document {
   @@map("documents")
 }
 
+model Notification {
+  id         String             @id @default(cuid())
+  userId     String
+  type       NotificationType
+  title      String
+  message    String
+  read       Boolean            @default(false)
+  entityId   String?            // Reference to task, project, etc.
+  entityType String?            // "task", "project", "client", etc.
+  user       User               @relation(fields: [userId], references: [id])
+  createdAt  DateTime           @default(now())
 
+  @@map("notifications")
+}
+
+enum NotificationType {
+  TASK_ASSIGNED
+  TASK_COMPLETED
+  TASK_OVERDUE
+  PROJECT_DEADLINE
+  PROJECT_STATUS_CHANGED
+  COMMENT_ADDED
+  CLIENT_ADDED
+  DOCUMENT_UPLOADED
+}

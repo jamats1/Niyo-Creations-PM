@@ -49,20 +49,26 @@ export default function IndustryDashboard({ industry = 'ALL' }: IndustryDashboar
 
   const fetchStats = async () => {
     try {
-      // Mock data for now - replace with actual API calls
-      setStats({
-        totalProjects: 24,
-        activeProjects: 18,
-        completedProjects: 6,
-        totalTasks: 89,
-        completedTasks: 67,
-        overdueTasks: 5,
-        teamMembers: 12,
-        clientsActive: 8,
-      });
-      setLoading(false);
+      const response = await fetch('/api/dashboard/stats');
+      if (response.ok) {
+        const data = await response.json();
+        const overview = data.stats.overview;
+        
+        // Map API response to component state
+        setStats({
+          totalProjects: overview.totalProjects,
+          activeProjects: overview.activeProjects,
+          completedProjects: overview.totalProjects - overview.activeProjects,
+          totalTasks: overview.totalTasks,
+          completedTasks: Math.round(overview.totalTasks * (overview.taskCompletionRate / 100)),
+          overdueTasks: overview.overdueTasks,
+          teamMembers: data.stats.teamInsights?.totalMembers || 0,
+          clientsActive: overview.activeClients,
+        });
+      }
     } catch (error) {
       console.error('Error fetching stats:', error);
+    } finally {
       setLoading(false);
     }
   };

@@ -1023,6 +1023,9 @@ video {
 .right-0 {
   right: 0px;
 }
+.top-full {
+  top: 100%;
+}
 .-z-10 {
   z-index: -10;
 }
@@ -1293,6 +1296,12 @@ video {
 }
 .w-80 {
   width: 20rem;
+}
+.w-1\/2 {
+  width: 50%;
+}
+.w-3\/4 {
+  width: 75%;
 }
 .min-w-0 {
   min-width: 0px;
@@ -1987,6 +1996,9 @@ video {
 }
 .p-8 {
   padding: 2rem;
+}
+.p-12 {
+  padding: 3rem;
 }
 .px-1 {
   padding-left: 0.25rem;
