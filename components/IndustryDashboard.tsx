@@ -24,6 +24,9 @@ interface DashboardStats {
   overdueTasks: number;
   teamMembers: number;
   clientsActive: number;
+  totalRevenue: number;
+  clientSatisfaction: number;
+  teamUtilization: number;
 }
 
 interface IndustryDashboardProps {
@@ -40,6 +43,9 @@ export default function IndustryDashboard({ industry = 'ALL' }: IndustryDashboar
     overdueTasks: 0,
     teamMembers: 0,
     clientsActive: 0,
+    totalRevenue: 0,
+    clientSatisfaction: 0,
+    teamUtilization: 0,
   });
   const [loading, setLoading] = useState(true);
 
@@ -52,7 +58,9 @@ export default function IndustryDashboard({ industry = 'ALL' }: IndustryDashboar
       const response = await fetch('/api/dashboard/stats');
       if (response.ok) {
         const data = await response.json();
-        const overview = data.stats.overview;
+        const overview = data.overview;
+        const performance = data.performance;
+        const teamInsights = data.teamInsights;
         
         // Map API response to component state
         setStats({
@@ -62,8 +70,11 @@ export default function IndustryDashboard({ industry = 'ALL' }: IndustryDashboar
           totalTasks: overview.totalTasks,
           completedTasks: Math.round(overview.totalTasks * (overview.taskCompletionRate / 100)),
           overdueTasks: overview.overdueTasks,
-          teamMembers: data.stats.teamInsights?.totalMembers || 0,
+          teamMembers: teamInsights?.totalMembers || 0,
           clientsActive: overview.activeClients,
+          totalRevenue: overview.totalRevenue,
+          clientSatisfaction: performance.clientSatisfaction,
+          teamUtilization: teamInsights?.utilization || 0,
         });
       }
     } catch (error) {
@@ -118,9 +129,9 @@ export default function IndustryDashboard({ industry = 'ALL' }: IndustryDashboar
           icon: FileText,
           color: 'gray',
           specialMetrics: [
-            { label: 'Total Revenue', value: '$125K', icon: DollarSign },
-            { label: 'Client Satisfaction', value: '98%', icon: TrendingUp },
-            { label: 'Team Utilization', value: '84%', icon: Users },
+            { label: 'Total Revenue', value: `$${Math.round(stats.totalRevenue || 0).toLocaleString()}`, icon: DollarSign },
+            { label: 'Client Satisfaction', value: `${stats.clientSatisfaction || 0}%`, icon: TrendingUp },
+            { label: 'Team Utilization', value: `${stats.teamUtilization || 0}%`, icon: Users },
           ]
         };
     }

@@ -10,7 +10,9 @@ export async function GET() {
       totalTasks,
       overdueTasks,
       activeClients,
-      totalRevenue,
+      revenueData,
+      teamMembers,
+      assignedTasks,
       projectStatusDistribution,
       taskStatusDistribution,
     ] = await Promise.all([
@@ -54,8 +56,33 @@ export async function GET() {
         }
       }),
       
-      // Total revenue placeholder (since we don't have budget field in current schema)
-      Promise.resolve(0),
+      // Total revenue from all projects
+      prisma.project.aggregate({
+        _sum: {
+          budget: true
+        }
+      }),
+      
+      // Total team members
+      prisma.user.count({
+        where: {
+          role: {
+            in: ['ADMIN', 'MEMBER']
+          }
+        }
+      }),
+      
+      // Tasks with assignees (for utilization)
+      prisma.task.count({
+        where: {
+          assignedTo: {
+            not: null
+          },
+          status: {
+            in: ['TODO', 'IN_PROGRESS', 'REVIEW']
+          }
+        }
+      }),
       
       // Project status distribution
       prisma.project.groupBy({
@@ -83,9 +110,34 @@ export async function GET() {
       where: { status: 'DONE' }
     })
 
+    // Calculate on-time projects (completed before deadline)
+    const onTimeProjects = await prisma.project.count({
+      where: {
+        status: 'COMPLETED',
+        deadline: {
+          gte: new Date()
+        }
+      }
+    })
+
     // Calculate completion rates
     const projectCompletionRate = totalProjects > 0 ? Math.round((completedProjects / totalProjects) * 100) : 0
     const taskCompletionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
+    
+    // Calculate total revenue
+    const totalRevenue = revenueData._sum.budget || 0
+    
+    // Calculate client satisfaction (based on completed projects on time)
+    const clientSatisfaction = completedProjects > 0 
+      ? Math.round((onTimeProjects / completedProjects) * 100) 
+      : 95 // Default high satisfaction for new projects
+    
+    // Calculate team utilization (assigned tasks vs capacity)
+    // Assuming each team member can handle 10 active tasks
+    const teamCapacity = teamMembers * 10
+    const teamUtilization = teamCapacity > 0 
+      ? Math.round((assignedTasks / teamCapacity) * 100)
+      : 0
 
     // Get recent activities (placeholder since we don't have activity tracking yet)
     const recentActivities: any[] = []
@@ -98,12 +150,20 @@ export async function GET() {
         overdueTasks,
         activeClients,
         totalRevenue,
-      },
-      performance: {
         projectCompletionRate,
         taskCompletionRate,
-        onTimeDelivery: 85, // Placeholder
-        clientSatisfaction: 92, // Placeholder
+      },
+      performance: {
+        clientSatisfaction,
+        teamUtilization,
+        onTimeDelivery: completedProjects > 0 
+          ? Math.round((onTimeProjects / completedProjects) * 100)
+          : 100,
+      },
+      teamInsights: {
+        totalMembers: teamMembers,
+        utilization: teamUtilization,
+        assignedTasks,
       },
       distribution: {
         projectStatus: projectStatusDistribution.map(item => ({

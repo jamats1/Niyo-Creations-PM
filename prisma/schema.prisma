@@ -60,6 +60,7 @@ model Project {
   description String?
   type        ProjectType
   status      ProjectStatus
+  budget      Float      @default(0)  // Project budget/value
   teamId      String
   clientId    String?
   deadline    DateTime?
